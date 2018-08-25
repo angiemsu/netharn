@@ -78,7 +78,7 @@ else:
                                             RunningStats, WindowedMovingAve,
                                             absdev, stats_dict,)
     from netharn.util.util_boxes import (Boxes, box_ious,)
-    from netharn.util.util_cachestamp import (CacheStamp,)
+ #   from netharn.util.util_cachestamp import (CacheStamp,)
     from netharn.util.util_cv2 import (draw_boxes_on_image, draw_text_on_image,
                                        putMultiLineText,)
     from netharn.util.util_demodata import (grab_test_image,

@@ -58,7 +58,7 @@ import torch.utils.data as torch_data
 
 
 def _hash_data(data):
-    return ub.hash_data(data, hasher='sha512', base='abc', types=True)
+    return ub.hash_data(data, hasher='sha512', base='abc')#, types=True)
 
 
 def _rectify_class(lookup, arg, kw):

@@ -74,7 +74,7 @@ class Folders(object):
             input_id = 'none'
 
         def _hash_data(data):
-            return ub.hash_data(data, hasher='sha512', base='abc', types=True)
+            return ub.hash_data(data, hasher='sha512', base='abc')#, types=True)
 
         train_hyper_id_long = hyper.hyper_id()
         train_hyper_id_brief = hyper.hyper_id(short=short, hashed=hashed)

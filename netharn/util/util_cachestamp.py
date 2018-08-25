@@ -1,6 +1,6 @@
 import ubelt as ub
 
-CacheStamp = ub.CacheStamp
+#CacheStamp = ub.CacheStamp
 
 
 if __name__ == '__main__':

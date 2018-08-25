@@ -27,6 +27,19 @@ __all__ = [
     'fit',
 ]
 
+class TripletNet(torch.nn.Module):
+    def __init__(self, embedding_net):
+        super(TripletNet, self).__init__()
+        self.embedding_net = embedding_net
+
+    def forward(self, x1, x2, x3):
+        output1 = self.embedding_net(x1)
+        output2 = self.embedding_net(x2)
+        output3 = self.embedding_net(x3)
+        return output1, output2, output3
+
+    def get_embedding(self, x):
+        return self.embedding_net(x)
 
 class SiameseLP(torch.nn.Module):
     """
@@ -168,13 +181,31 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
         self.input_id = '{}-{}'.format(len(self), hashid)
 
         if augment:
+            import imgaug as ia
             import imgaug.augmenters as iaa
             # NOTE: we are only using `self.augmenter` to make a hyper hashid
             # in __getitem__ we invoke transform explicitly for fine control
+            
+            # applies affine 50% of the time
+           #  sometimes = lambda aug: iaa.Sometimes(0.5, aug)
+
             self.hue = nh.data.transforms.HSVShift(hue=0.1, sat=1.5, val=1.5)
             self.crop = iaa.Crop(percent=(0, .2))
             self.flip = iaa.Fliplr(p=.5)
-            self.augmenter = iaa.Sequential([self.hue, self.crop, self.flip])
+            self.affine = iaa.Affine(
+                scale={"x": (1.0, 1.01), "y": (1.0, 1.01)},
+                translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},
+                rotate=(-3.6, 3.6),
+                shear=(-7, 7),
+                    # order=[0, 1, 3],
+                order=1,
+                cval=(0, 255),
+                mode=ia.ALL,
+               # backend='cv2',
+                ),
+            self.gray = iaa.Grayscale(alpha=1.0)
+            self.augmenter = iaa.Sequential([self.hue, self.crop, self.flip, self.affine])
+           # self.augmenter = iaa.Sequential([self.hue, self.crop, self.flip,self.gray])
         else:
             self.augmenter = None
         self.letterbox = nh.data.transforms.Resize(target_size=(dim, dim),
@@ -288,10 +319,19 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
             img1 = self.crop.augment_image(img1)
             img2 = self.crop.augment_image(img2)
 
-            # Do the same flip for both images
+            #img1 = self.gray.augment_image(img1)
+            #img2 = self.gray.augment_image(img2)
+          
+           # img1 = self.affine.augment_image(img1)
+           # img2 = self.affine.augment_image(img2)
+         
+            # Do the same flip for both images - deterministic applies same effect to images 
             flip_det = self.flip.to_deterministic()
             img1 = flip_det.augment_image(img1)
             img2 = flip_det.augment_image(img2)
+           # aff_det = self.affine.to_deterministic()
+           # img1 = aff_det.augment_image(img1)
+           # img2 = aff_det.augment_image(img2)
 
         # Always embed images in a letterbox to preserve aspect ratio
         img1 = self.letterbox.forward(img1)
@@ -326,7 +366,7 @@ def randomized_ibeis_dset(dbname, dim=416):
         >>> datasets = randomized_ibeis_dset(dbname)
         >>> # xdoctest: +REQUIRES(--show)
         >>> nh.util.qtensure()
-        >>> self = datasets['train']
+        >>> self = datasets['vali']
         >>> self.show_sample()
         >>> nh.util.show_if_requested()
     """
@@ -340,7 +380,7 @@ def randomized_ibeis_dset(dbname, dim=416):
         'test': set(),
     }
 
-    vali_frac = .0
+    vali_frac = .1
     test_frac = .1
     train_frac = 1 - (vali_frac + test_frac)
 
@@ -359,9 +399,13 @@ def randomized_ibeis_dset(dbname, dim=416):
     # either test / train / or vali split
     choices = rng.choice(list(category_probs.keys()),
                          p=list(category_probs.values()), size=len(pccs))
+    i=0
     for key, pcc in zip(choices, pccs):
         pcc_sets[key].add(pcc)
-
+        i = i+1
+        print(key)
+        print(i) 
+        print(pcc) 
     if __debug__:
         # Ensure sets of PCCs are disjoint!
         intersections = {}
@@ -391,19 +435,80 @@ def randomized_ibeis_dset(dbname, dim=416):
                     'different than what was requested: {}'.format(
                         got, key, want))
 
-    test_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['test'], dim=dim)
-    train_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['train'], dim=dim,
-                                              augment=False)
+    test_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['test'], dim=dim, augment=False)
+    train_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['train'], dim=dim)
     vali_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['vali'], dim=dim,
-                                             augment=False)
+                                            augment=False)
 
     datasets = {
         'train': train_dataset,
         'vali': vali_dataset,
         'test': test_dataset,
     }
+   # print('*****test******',test_dataset)
     # datasets.pop('test', None)  # dont test for now (speed consideration)
     return datasets
+
+
+
+def randomized_ibeis_dset_old(dbname, dim=224):
+    """
+    Ignore:
+        >>> from clab.live.siam_train import *
+        >>> datasets = randomized_ibeis_dset('PZ_MTEST')
+        >>> ut.qtensure()
+        >>> self = datasets['train']
+        >>> self.augment = True
+        >>> self.show_sample()
+    """
+    # from clab.live.siam_train import *
+    # dbname = 'PZ_MTEST'
+    import utool as ut
+    from ibeis.algo.verif import vsone
+    # pblm = vsone.OneVsOneProblem.from_empty('PZ_MTEST')
+    pblm = vsone.OneVsOneProblem.from_empty(dbname)
+
+    pccs = list(pblm.infr.positive_components())
+    pcc_freq = list(map(len, pccs))
+    freq_grouped = ub.group_items(pccs, pcc_freq)
+
+    # Simpler very randomized sample strategy
+    train_pccs = []
+    vali_pccs = []
+    test_pccs = []
+    import math
+
+    # vali_frac = .1
+    test_frac = .1
+    vali_frac = .1
+
+    for i, group in freq_grouped.items():
+        group = ut.shuffle(group, rng=432232 + i)
+        n_test = 0 if len(group) == 1 else math.ceil(len(group) * test_frac)
+        test, learn = group[:n_test], group[n_test:]
+        n_vali = 0 if len(group) == 1 else math.ceil(len(learn) * vali_frac)
+        vali, train = group[:n_vali], group[-n_vali:]
+        train_pccs.extend(train)
+        test_pccs.extend(test)
+        vali_pccs.extend(vali)
+        #if i > 3:
+         #   print('train',train)
+          #  print('test',test)
+    test_dataset = RandomBalancedIBEISSample(pblm, test_pccs, dim=dim)
+    train_dataset = RandomBalancedIBEISSample(pblm, train_pccs, dim=dim)
+    vali_dataset = RandomBalancedIBEISSample(pblm, vali_pccs, dim=dim)
+    train_dataset.augment = True
+    
+    datasets = {
+        'train': train_dataset,
+        # 'vali': vali_dataset,
+        'test': test_dataset,
+    }
+    return datasets
+
+
+
+
 
 
 class SiamHarness(nh.FitHarn):
@@ -541,7 +646,7 @@ def setup_harness(**kwargs):
 
     for k, v in datasets.items():
         print('* len({}) = {}'.format(k, len(v)))
-
+    
     if workers > 0:
         import cv2
         cv2.setNumThreads(0)
@@ -569,7 +674,7 @@ def setup_harness(**kwargs):
         }),
 
         'criterion': (nh.criterions.ContrastiveLoss, {
-            'margin': 4,
+            'margin': 1.5,
             'weight': None,
         }),
 
@@ -582,24 +687,24 @@ def setup_harness(**kwargs):
 
         'initializer': (nh.initializers.NoOp, {}),
 
-        'scheduler': (nh.schedulers.Exponential, {
-            'gamma': 0.99,
-            'stepsize': 2,
-        }),
-        # 'scheduler': (nh.schedulers.ListedLR, {
-        #     'points': {
-        #         1:   lr * 1.0,
-        #         19:  lr * 1.1,
-        #         20:  lr * 0.1,
-        #     },
-        #     'interpolate': True
+       # 'scheduler': (nh.schedulers.Exponential, {
+        #    'gamma': 0.99,
+         #   'stepsize':2,
         # }),
+         'scheduler': (nh.schedulers.ListedLR, {
+             'points': {
+                 1:   lr * 1.0,
+                 19:  lr * 1.1,
+                 20:  lr * 0.1,
+             },
+             'interpolate': True
+         }),
 
         'monitor': (nh.Monitor, {
             'minimize': ['loss', 'pos_dist', 'brier'],
             'maximize': ['accuracy', 'neg_dist', 'mcc'],
-            'patience': 40,
-            'max_epoch': 40,
+            'patience': 60,
+            'max_epoch': 60,
         }),
 
         'augment': datasets['train'].augmenter,
@@ -687,6 +792,84 @@ def fit(dbname='PZ_MTEST', nice='untitled', dim=416, bsize=6, bstep=1,
     kw = ub.dict_subset(locals(), inspect.getargspec(fit).args)
     harn = setup_harness(**kw)
     harn.run()
+    #comparable_vamp(**kw)
+def comparable_vamp(**kwargs):
+
+    import parse
+    import glob
+    from ibeis.algo.verif import vsone
+    parse.log.setLevel(30)
+    from netharn.examples.siam_ibeis import randomized_ibeis_dset
+    from netharn.examples.siam_ibeis import SiameseLP
+
+    dbname = ub.argval('--db', default='GZ_Master1')
+    dim = 512
+    datasets = randomized_ibeis_dset(dbname, dim=dim)
+
+    class_names = ['diff', 'same']
+    workdir = ub.ensuredir(os.path.expanduser(
+        '~/data/work/siam-ibeis2/' + dbname))
+    task_name = 'binary_match'
+
+    datasets['test'].pccs
+    datasets['train'].pccs
+
+    # pblm = vsone.OneVsOneProblem.from_empty('PZ_MTEST')
+    ibs = datasets['train'].infr.ibs
+    labeled_aid_pairs = [datasets['train'].get_aidpair(i)
+                         for i in range(len(datasets['train']))]
+    pblm_train = vsone.OneVsOneProblem.from_labeled_aidpairs(
+        ibs, labeled_aid_pairs, class_names=class_names,
+        task_name=task_name,
+    )
+
+    test_labeled_aid_pairs = [datasets['test'].get_aidpair(i)
+                              for i in range(len(datasets['test']))]
+    pblm_test = vsone.OneVsOneProblem.from_labeled_aidpairs(
+        ibs, test_labeled_aid_pairs, class_names=class_names,
+        task_name=task_name,
+    )
+     # ----------------------------
+    # Build a VAMP classifier using the siamese training dataset
+    pblm_train.load_features()
+    pblm_train.samples.print_info()
+    pblm_train.build_feature_subsets()
+    pblm_train.samples.print_featinfo()
+
+    pblm_train.learn_deploy_classifiers(task_keys=['binary_match'])
+    clf_dpath = ub.ensuredir((workdir, 'clf'))
+    classifiers = pblm_train.ensure_deploy_classifiers(dpath=clf_dpath)
+    ibs_clf = classifiers['binary_match']
+    clf = ibs_clf.clf
+
+    # ----------------------------
+    # Evaluate the VAMP classifier on the siamese testing dataset
+    pblm_test.load_features()
+    pblm_test.samples.print_info()
+    pblm_test.build_feature_subsets()
+    pblm_test.samples.print_featinfo()
+    data_key = pblm_train.default_data_key
+    task_key = 'binary_match'
+    vamp_res = pblm_test._external_classifier_result(clf, task_key, data_key)
+    vamp_report = vamp_res.extended_clf_report()  # NOQA
+    print('vamp roc = {}'.format(vamp_res.roc_score()))
+
+
+def get_snapshot(train_dpath, epoch='recent'):
+    """
+    Get a path to a particular epoch or the most recent one
+    """
+    snapshots = sorted(glob.glob(train_dpath + '/*/_epoch_*.pt'))
+    if epoch is None:
+        epoch = 'recent'
+
+    if epoch == 'recent':
+        load_path = snapshots[-1]
+    else:
+        snapshot_nums = [parse.parse('{}_epoch_{num:d}.pt', path).named['num']
+                         for path in snapshots]
+        load_path = dict(zip(snapshot_nums, snapshots))[epoch]
+    return load_path
 
 
 def main():
