@@ -129,7 +129,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
         }
         self.pccs = pccs
         all_aids = list(ub.flatten(pccs))
-        print('len aids',len(all_aids))
+       # print('len aids',len(all_aids))
         all_fpaths = pblm.infr.ibs.depc_annot.get(
             'chips', all_aids, read_extern=False, colnames='img',
             config=chip_config)
@@ -151,7 +151,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
                 is_comparable = self.is_comparable(edges)
                 pos_edges = edges[is_comparable]
                 self.pos_pairs.extend(list(pos_edges))
-            i=i+1
+        #    i=i+1
        # print('num pccs', i)
         rng = nh.util.ensure_rng(self.SEED, 'numpy')
         self.pyrng = nh.util.ensure_rng(self.SEED + 1, 'python')
@@ -189,8 +189,6 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
         from ibeis.algo.verif import vsone
         pblm = vsone.OneVsOneProblem.from_empty(dbname)
         pccs = list(pblm.infr.positive_components())
-        status = pblm.infr.connected_component_status()
-        print(ut.rep3r(status))
         self = RandomBalancedIBEISSample(pblm, pccs, dim=dim)
         return self
 
@@ -357,7 +355,7 @@ def randomized_ibeis_dset(dbname, dim=416):
     # either test / train / or vali split
     choices = rng.choice(list(category_probs.keys()),
                          p=list(category_probs.values()), size=len(pccs))
-    i = 0
+   # i = 0
     for key, pcc in zip(choices, pccs):
         pcc_sets[key].add(pcc)
       #  i = i+1
