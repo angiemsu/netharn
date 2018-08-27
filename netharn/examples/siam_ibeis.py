@@ -259,6 +259,9 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
             label = 0
         return aid1, aid2, label
 
+    def get_hard_neg(self, index):
+
+
     def load_from_edge(self, aid1, aid2):
         """
         Example:
@@ -313,6 +316,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
         return img1, img2, label
 
 
+
 def randomized_ibeis_dset(dbname, dim=416):
     """
     CommandLine:
@@ -362,7 +366,7 @@ def randomized_ibeis_dset(dbname, dim=416):
       #  if key=='test':
       #      print(key, i, pcc)
    # print('total animals  = {!r}'.format(i))
- 
+
     if __debug__:
         # Ensure sets of PCCs are disjoint!
         intersections = {}
@@ -378,7 +382,7 @@ def randomized_ibeis_dset(dbname, dim=416):
 
     if True:
         num_pccs = ub.map_vals(len, pcc_sets)
-        total = sum(num_pccs.values()) 
+        total = sum(num_pccs.values())
         print('total animals', total)
         fracs = {k: v / total for k, v in num_pccs.items()}
         print('Splits use the following fractions of data: {}'.format(
