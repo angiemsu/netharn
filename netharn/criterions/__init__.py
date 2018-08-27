@@ -14,3 +14,5 @@ else:
     from netharn.criterions import focal
     from netharn.criterions.contrastive_loss import (ContrastiveLoss,)
     from netharn.criterions.focal import (FocalLoss, one_hot_embedding,)
+    from netharn.criterions import losses
+    from netharn.criterions.losses import (OnlineContrastiveLoss,)
