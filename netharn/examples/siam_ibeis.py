@@ -259,9 +259,6 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
             label = 0
         return aid1, aid2, label
 
-    def get_hard_neg(self, index):
-
-
     def load_from_edge(self, aid1, aid2):
         """
         Example:
@@ -527,6 +524,8 @@ def setup_harness(**kwargs):
         >>> harn = setup_harness(dbname='PZ_MTEST')
         >>> harn.initialize()
     """
+    from pairs import HardNegativePairSelector
+
     nice = kwargs.get('nice', 'untitled')
     bsize = int(kwargs.get('bsize', 6))
     bstep = int(kwargs.get('bstep', 1))
@@ -562,6 +561,7 @@ def setup_harness(**kwargs):
 
     xpu = nh.XPU.cast(xpu)
 
+
     hyper = nh.HyperParams(**{
         'nice': nice,
         'workdir': workdir,
@@ -575,9 +575,10 @@ def setup_harness(**kwargs):
             'input_shape': (1, 3, dim, dim),
         }),
 
-        'criterion': (nh.criterions.ContrastiveLoss, {
+        'criterion': (nh.criterions.OnlineContrastiveLoss, {
             'margin': margin,
             'weight': None,
+            'pair_selector': HardNegativePairSelector(),
         }),
 
         'optimizer': (torch.optim.SGD, {
