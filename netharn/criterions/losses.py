@@ -53,6 +53,8 @@ class OnlineContrastiveLoss(nn.Module):
         self.pair_selector = pair_selector
 
     def forward(self, embeddings, target):
+        print('embeddings', embeddings)
+        print('target', target)
         positive_pairs, negative_pairs = self.pair_selector.get_pairs(embeddings, target)
         if embeddings.is_cuda:
             positive_pairs = positive_pairs.cuda()

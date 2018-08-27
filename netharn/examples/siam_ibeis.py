@@ -103,7 +103,7 @@ class SiameseLP(torch.nn.Module):
         assert shape1 == shape2
         output_shape = (shape1[0], 1)
         return output_shape
-
+   
 
 class RandomBalancedIBEISSample(torch.utils.data.Dataset):
     """
@@ -524,7 +524,7 @@ def setup_harness(**kwargs):
         >>> harn = setup_harness(dbname='PZ_MTEST')
         >>> harn.initialize()
     """
-    from pairs import HardNegativePairSelector
+    from netharn.pairs import HardNegativePairSelector
 
     nice = kwargs.get('nice', 'untitled')
     bsize = int(kwargs.get('bsize', 6))
@@ -561,7 +561,7 @@ def setup_harness(**kwargs):
 
     xpu = nh.XPU.cast(xpu)
 
-
+    from netharn.networks import EmbeddingNet
     hyper = nh.HyperParams(**{
         'nice': nice,
         'workdir': workdir,
@@ -569,16 +569,16 @@ def setup_harness(**kwargs):
         'loaders': loaders,
 
         'xpu': xpu,
-
+       # 'model': EmbeddingNet(),
         'model': (SiameseLP, {
             'p': 2,
             'input_shape': (1, 3, dim, dim),
         }),
 
-        'criterion': (nh.criterions.OnlineContrastiveLoss, {
+        'criterion': (nh.criterions.ContrastiveLoss, {
             'margin': margin,
             'weight': None,
-            'pair_selector': HardNegativePairSelector(),
+       #     'pair_selector': HardNegativePairSelector(),
         }),
 
         'optimizer': (torch.optim.SGD, {

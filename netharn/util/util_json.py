@@ -103,7 +103,7 @@ def write_json(fpath, data):
         # pretty pandas
         json_text = (json.dumps(json.loads(data.to_json()), indent=4))
     elif isinstance(data, dict):
-        json_text = json.dumps(data, cls=LossyJSONEncoder, indent=4)
+        json_text = json.dumps(list(data), cls=LossyJSONEncoder, indent=4)
     else:
         raise TypeError(type(data))
     ub.writeto(fpath, json_text)
