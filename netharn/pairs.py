@@ -53,24 +53,26 @@ class HardNegativePairSelector(PairSelector):
         if self.cpu:
             embeddings = embeddings.cpu()
         distance_matrix = embeddings
-        print(distance_matrix)
- 
+       # print('dist matrix',distance_matrix)
+        positive_pairs = distance_matrix[np.where(labels == 1)]
+       # print(len(positive_pairs))
         labels = labels.cpu().data.numpy()
-        all_pairs = np.array(list(combinations(range(len(labels)), 2)))
-        all_pairs = torch.LongTensor(all_pairs)
-        print('all pairs', all_pairs)
-       
-        positive_pairs = all_pairs[(labels[all_pairs[:, 0]] == labels[all_pairs[:, 1]]).nonzero()]
-        negative_pairs = all_pairs[(labels[all_pairs[:, 0]] != labels[all_pairs[:, 1]]).nonzero()]
-        print(positive_pairs)
-        print(negative_pairs)
-
-       # negative_distances = distance_matrix[negative_pairs[:, 0], negative_pairs[:, 1]]
-        negative_distances = distance_matrix[negative_pairs[:,0]]
+       # print('labels',labels)
+        negative_distances = distance_matrix[np.where(labels == 0)]
+       # print(negative_distances)
         negative_distances = negative_distances.cpu().data.numpy()
-        top_negatives = np.argpartition(negative_distances, len(positive_pairs))[:len(positive_pairs)]
-        top_negative_pairs = negative_pairs[torch.LongTensor(top_negatives)]
-
+       # print('neg dist', negative_distances)
+       # print(len(positive_pairs))
+        if len(positive_pairs) > len(negative_distances):
+             index = len(negative_distances)
+        else:
+             index = len(positive_pairs)
+        top_negatives = np.argpartition(negative_distances,index-1)[:index]
+       # print('top negatives', top_negatives)
+        top_negative_pairs = negative_distances[torch.LongTensor(top_negatives)]
+       # print('top neg pairs', top_negative_pairs)
+        positive_pairs = positive_pairs[:index]
+        
         return positive_pairs, top_negative_pairs
 
 

@@ -169,7 +169,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
             # NOTE: we are only using `self.augmenter` to make a hyper hashid
             # in __getitem__ we invoke transform explicitly for fine control
            # sometimes = lambda aug: iaa.Sometimes(0.5, aug)
-            self.hue = nh.data.transforms.HSVShift(hue=0.1, sat=1.5, val=1)
+            self.hue = nh.data.transforms.HSVShift(hue=0.1, sat=1.5, val=1.5 )
             self.crop = iaa.Crop(percent=(0, .2))
             self.flip = iaa.Fliplr(p=.5)
             self.augmenter = iaa.Sequential([self.hue, self.crop, self.flip])
@@ -245,9 +245,9 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
         return np.array(flags, dtype=np.bool)
 
     def get_aidpair(self, index):
-        if index % 2 == 0:
+        if index % 2  == 0:
             # Get a positive pair if the index is even
-            aid1, aid2 = self.pos_pairs[index // 2]
+            aid1, aid2 = self.pos_pairs[index // 4]
             label = 1
         else:
             # Get a random negative pair if the index is odd
@@ -257,6 +257,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
             aid1 = self.pyrng.sample(pcc1, k=1)[0]
             aid2 = self.pyrng.sample(pcc2, k=1)[0]
             label = 0
+       # print(aid1, aid2, label)
         return aid1, aid2, label
 
     def load_from_edge(self, aid1, aid2):
@@ -280,10 +281,10 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
 
         if self.augmenter is not None:
             # Augment hue and crop independently
-           #  img1 = self.hue.forward(img1, self.rng)
-           # img2 = self.hue.forward(img2, self.rng)
-           # img1 = self.crop.augment_image(img1)
-           # img2 = self.crop.augment_image(img2)
+            img1 = self.hue.forward(img1, self.rng)
+            img2 = self.hue.forward(img2, self.rng)
+            img1 = self.crop.augment_image(img1)
+            img2 = self.crop.augment_image(img2)
 
             # Do the same flip for both images
             flip_det = self.flip.to_deterministic()
@@ -438,6 +439,8 @@ class SiamHarness(nh.FitHarn):
         inputs, label = batch
         output = harn.model(*inputs)
         loss = harn.criterion(output, label).sum()
+       # print('output', output)
+       # print('loss',loss)
         return output, loss
 
     def on_batch(harn, batch, output, loss):
@@ -578,7 +581,7 @@ def setup_harness(**kwargs):
         'criterion': (nh.criterions.ContrastiveLoss, {
             'margin': margin,
             'weight': None,
-       #     'pair_selector': HardNegativePairSelector(),
+          #  'pair_selector': HardNegativePairSelector(),
         }),
 
         'optimizer': (torch.optim.SGD, {

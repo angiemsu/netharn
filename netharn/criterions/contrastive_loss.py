@@ -80,7 +80,7 @@ class ContrastiveLoss(nn.Module):
         # Output should be a Bx1 vector representing the predicted
         # distance between each pair in a patch of image pairs
         dist = torch.squeeze(output)
-
+       # print('dist',dist)
         # Build indicator vectors labeling which pairs are pos and neg
         is_genuine = label.float()
         is_imposter = (1 - is_genuine)
@@ -106,4 +106,5 @@ class ContrastiveLoss(nn.Module):
         # Divide by 2 after summing for efficiency
         ave_loss = torch.sum(loss2x) / 2.0 / label.size()[0]
         loss = ave_loss
+      #  print('loss', loss)
         return loss

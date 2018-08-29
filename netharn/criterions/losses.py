@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import numpy as np
 
 class ContrastiveLoss(nn.Module):
     """
@@ -53,19 +53,28 @@ class OnlineContrastiveLoss(nn.Module):
         self.pair_selector = pair_selector
 
     def forward(self, embeddings, target):
-        print('embeddings', embeddings)
-        print('target', target)
+      #  print('embeddings losses', embeddings)
+      #  print('target losses', target)
         positive_pairs, negative_pairs = self.pair_selector.get_pairs(embeddings, target)
-        if embeddings.is_cuda:
-            positive_pairs = positive_pairs.cuda()
-            negative_pairs = negative_pairs.cuda()
-        positive_loss = (embeddings[positive_pairs[:, 0]] - embeddings[positive_pairs[:, 1]]).pow(2).sum(1)
-        negative_loss = F.relu(
-            self.margin - (embeddings[negative_pairs[:, 0]] - embeddings[negative_pairs[:, 1]]).pow(2).sum(
-                1).sqrt()).pow(2)
-        loss = torch.cat([positive_loss, negative_loss], dim=0)
-        return loss.mean()
-
+       # print('pos pairs',positive_pairs)
+       # print('neg pairs', negative_pairs)
+       
+        try:
+            num = len(negative_pairs)*2 
+        except:
+            num = 1
+        #positive_pairs = torch.from_numpy(positive_pairs).cuda() #torch.tensor(positive_pairs)
+        negative_pairs = torch.from_numpy(np.array(negative_pairs, dtype='float32')) #torch.tensor(negative_pairs)
+        #print('pos pairs',positive_pairs)
+        #print('neg pairs', negative_pairs)
+        hinge_neg_dist = torch.clamp(self.margin - negative_pairs, min=0.0)
+        loss_imposter = torch.pow(hinge_neg_dist, 2)
+        loss_genuine = torch.pow(positive_pairs, 2)
+        loss2x = loss_genuine + loss_imposter
+        #ave_loss = loss2x.mean()
+        ave_loss = torch.sum(loss2x) / 2.0 / num
+        loss = ave_loss
+        return loss
 
 class OnlineTripletLoss(nn.Module):
     """
