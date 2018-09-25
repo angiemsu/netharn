@@ -48,7 +48,7 @@ class RegionLoss(BaseLossWithCudaState):
     """
 
     def __init__(self, num_classes, anchors, reduction=32, seen=0, coord_scale=1.0, noobject_scale=1.0, object_scale=5.0, class_scale=1.0, thresh=0.6):
-        super().__init__()
+        super(RegionLoss, self).__init__()
         self.num_classes = num_classes
         self.num_anchors = len(anchors)
         self.anchor_step = len(anchors[0])
@@ -86,6 +86,7 @@ class RegionLoss(BaseLossWithCudaState):
             as opposed to having them removed and counting them as false detections.
 
         Example:
+            >>> # DISABLE_DOCTEST
             >>> from netharn.models.yolo2.region_loss2 import *
             >>> from netharn.models.yolo2.light_yolo import Yolo
             >>> torch.random.manual_seed(0)
@@ -111,7 +112,7 @@ class RegionLoss(BaseLossWithCudaState):
             >>> im_data = torch.randn(len(target), 3, Hin, Win, requires_grad=True)
             >>> output = network.forward(im_data)
             >>> loss = float(self(output, target))
-            >>> print('loss = {loss:.2f}'.format(loss))
+            >>> print('loss = {loss:.2f}'.format(loss=loss))
             loss = 20.43
         """
         if isinstance(target, dict):

@@ -683,6 +683,7 @@ def imread(fpath, **kw):
     reads image data in BGR format
 
     Example:
+        >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
         >>> from os.path import splitext  # NOQA
         >>> fpath = ub.grabdata('https://i.imgur.com/oHGsmvF.png', fname='carl.png')
@@ -696,6 +697,7 @@ def imread(fpath, **kw):
         >>> assert np.all(img2 == img1)
 
     Example:
+        >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
         >>> #img1 = (np.arange(0, 12 * 12 * 3).reshape(12, 12, 3) % 255).astype(np.uint8)
         >>> img1 = imread(ub.grabdata('http://i.imgur.com/iXNf4Me.png', fname='ada.png'))
@@ -708,6 +710,7 @@ def imread(fpath, **kw):
         >>> assert np.all(tif_im == png_im)
 
     Example:
+        >>> # xdoctest: +REQUIRES(--network)
         >>> import tempfile
         >>> #img1 = (np.arange(0, 12 * 12 * 3).reshape(12, 12, 3) % 255).astype(np.uint8)
         >>> tif_fpath = ub.grabdata('https://ghostscript.com/doc/tiff/test/images/rgb-3c-16b.tiff')
@@ -731,7 +734,32 @@ def imread(fpath, **kw):
         assert int(Image.PILLOW_VERSION.split('.')[0]) > 4
     """
     try:
-        if fpath.endswith(('.tif', '.tiff')):
+        if fpath.lower().endswith(('.ntf', '.nitf')):
+            try:
+                import gdal
+            except ImportError:
+                raise Exception('cannot read NITF images without gdal')
+            try:
+                gdal_dset = gdal.Open(fpath)
+                if gdal_dset.RasterCount == 1:
+                    band = gdal_dset.GetRasterBand(1)
+                    image = np.array(band.ReadAsArray())
+                elif gdal_dset.RasterCount == 3:
+                    bands = [
+                        gdal_dset.GetRasterBand(i)
+                        for i in [1, 2, 3]
+                    ]
+                    channels = [np.array(band.ReadAsArray()) for band in bands]
+                    image = np.dstack(channels)
+                else:
+                    raise NotImplementedError(
+                        'Can only read 1 or 3 channel NTF images. '
+                        'Got {}'.format(gdal_dset.RasterCount))
+            except Exception:
+                raise
+            finally:
+                gdal_dset = None
+        elif fpath.lower().endswith(('.tif', '.tiff')):
             import skimage.io
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")

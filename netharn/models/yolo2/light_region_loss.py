@@ -65,6 +65,7 @@ class RegionLoss(BaseLossWithCudaState):
         python ~/code/netharn/netharn/models/yolo2/light_region_loss.py RegionLoss:0
 
     Example:
+        >>> # DISABLE_DOCTEST
         >>> from netharn.models.yolo2.light_yolo import Yolo
         >>> torch.random.manual_seed(0)
         >>> network = Yolo(num_classes=2, conf_thresh=4e-2)
@@ -98,6 +99,7 @@ class RegionLoss(BaseLossWithCudaState):
         output.sum() = 2.15
 
     Example:
+        >>> # DISABLE_DOCTEST
         >>> from netharn.models.yolo2.light_yolo import Yolo
         >>> torch.random.manual_seed(0)
         >>> network = Yolo(num_classes=2, conf_thresh=4e-2)
@@ -124,7 +126,7 @@ class RegionLoss(BaseLossWithCudaState):
                  thresh=0.6, seen_thresh=12800,
                  small_boxes=False,
                  mse_factor=0.5):
-        super().__init__()
+        super(RegionLoss, self).__init__()
 
         self.num_classes = num_classes
 
@@ -172,6 +174,7 @@ class RegionLoss(BaseLossWithCudaState):
             seen (int): number of training batches the networks has "seen"
 
         Example:
+            >>> # DISABLE_DOCTEST
             >>> nC = 2
             >>> self = RegionLoss(num_classes=nC, anchors=np.array([[1, 1]]))
             >>> nA = len(self.anchors)
