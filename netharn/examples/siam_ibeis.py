@@ -118,7 +118,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
     """
     SEED = 563401
 
-    def __init__(self, pblm, pccs, dim=224, augment=True):
+    def __init__(self, pblm, pccs, dim=224, augment=True, transform=None):
         chip_config = {
             # preserve aspect ratio, use letterbox to fit into network
             'resize_dim': 'maxwh',
@@ -127,6 +127,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
             # 'resize_dim': 'wh',
             # 'dim_size': (dim, dim)
         }
+        self.transform = transform
         self.pccs = pccs
         all_aids = list(ub.flatten(pccs))
        # print('len aids',len(all_aids))
@@ -244,18 +245,18 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
         flags[guess_flags] = need_flags
         return np.array(flags, dtype=np.bool)
 
-    def get_aidpair(self, index):
-        if index % 2  == 0:
+    def get_aidpair(self, index): 
+        if index % 2 == 0:
             # Get a positive pair if the index is even
-            aid1, aid2 = self.pos_pairs[index // 4]
+            aid1, aid2 = self.pos_pairs[index // 2]
             label = 1
-        else:
+        elif index % 1 == 0:
             # Get a random negative pair if the index is odd
             pcc1, pcc2 = self.pyrng.sample(self.pccs, k=2)
             while pcc1 is pcc2:
                 pcc1, pcc2 = self.pyrng.sample(self.pccs, k=2)
             aid1 = self.pyrng.sample(pcc1, k=1)[0]
-            aid2 = self.pyrng.sample(pcc2, k=1)[0]
+            aid2 = self.pyrng.sample(pcc2, k=1)[0] 
             label = 0
        # print(aid1, aid2, label)
         return aid1, aid2, label
@@ -286,7 +287,8 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
             img1 = self.crop.augment_image(img1)
             img2 = self.crop.augment_image(img2)
 
-            # Do the same flip for both images
+            # Do the same flip for both image
+
             flip_det = self.flip.to_deterministic()
             img1 = flip_det.augment_image(img1)
             img2 = flip_det.augment_image(img2)
@@ -309,8 +311,11 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
         if self.augmenter is not None:
             if self.rng.rand() > .5:
                 img1, img2 = img2, img1
-        img1 = torch.FloatTensor(img1.transpose(2, 0, 1))
-        img2 = torch.FloatTensor(img2.transpose(2, 0, 1))
+        if self.transform is not None:
+             img1 = self.transform(img1)
+             img2 = self.transform(img2)
+        #img1 = torch.FloatTensor(img1.transpose(2, 0, 1))
+        #img2 = torch.FloatTensor(img2.transpose(2, 0, 1))
         return img1, img2, label
 
 
@@ -394,10 +399,19 @@ def randomized_ibeis_dset(dbname, dim=416):
                     'Sampled fraction of {} for {!r} is significantly '
                     'different than what was requested: {}'.format(
                         got, key, want))
-
-    test_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['test'], dim=dim, augment=False)
-    train_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['train'], dim=dim,
-                                              augment=True)
+    
+    transform = transforms.Compose([
+   # transforms.Resize((224,224)), 
+    transforms.ToPILImage(),
+    transforms.Grayscale(1),
+    transforms.Resize((100,100)),
+    transforms.ToTensor()])
+#transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    test_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['test'], dim=dim, augment=False, transform=None) #transform=transforms.Compose([transforms.Resize((100,100)),
+                                                                 #    transforms.ToPILImage(), transforms.ToTensor()
+                                                                #      ]))
+    train_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['train'], dim=dim, 
+                                              augment=True, transform=transform)
     vali_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['vali'], dim=dim,
                                              augment=False)
 
