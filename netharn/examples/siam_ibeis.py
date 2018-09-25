@@ -13,7 +13,7 @@ import netharn as nh
 import torch
 import torchvision
 import itertools as it
-from torchvision import transforms
+#from torchvision import transforms
 __all__ = [
     'RandomBalancedIBEISSample',
     'SiameseLP',
@@ -118,7 +118,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
     """
     SEED = 563401
 
-    def __init__(self, pblm, pccs, dim=224, augment=True, transform=None):
+    def __init__(self, pblm, pccs, dim=224, augment=True): #transforms = None
         chip_config = {
             # preserve aspect ratio, use letterbox to fit into network
             'resize_dim': 'maxwh',
@@ -127,7 +127,7 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
             # 'resize_dim': 'wh',
             # 'dim_size': (dim, dim)
         }
-        self.transform = transform
+       # self.transform = transform
         self.pccs = pccs
         all_aids = list(ub.flatten(pccs))
        # print('len aids',len(all_aids))
@@ -311,11 +311,11 @@ class RandomBalancedIBEISSample(torch.utils.data.Dataset):
         if self.augmenter is not None:
             if self.rng.rand() > .5:
                 img1, img2 = img2, img1
-        if self.transform is not None:
-             img1 = self.transform(img1)
-             img2 = self.transform(img2)
-        #img1 = torch.FloatTensor(img1.transpose(2, 0, 1))
-        #img2 = torch.FloatTensor(img2.transpose(2, 0, 1))
+        #if self.transform is not None:
+            # img1 = self.transform(img1)
+            # img2 = self.transform(img2)
+        img1 = torch.FloatTensor(img1.transpose(2, 0, 1))
+        img2 = torch.FloatTensor(img2.transpose(2, 0, 1))
         return img1, img2, label
 
 
@@ -400,18 +400,20 @@ def randomized_ibeis_dset(dbname, dim=416):
                     'different than what was requested: {}'.format(
                         got, key, want))
     
-    transform = transforms.Compose([
-   # transforms.Resize((224,224)), 
-    transforms.ToPILImage(),
-    transforms.Grayscale(1),
-    transforms.Resize((100,100)),
-    transforms.ToTensor()])
+  #  transform = transforms.Compose([
+         # transforms.Resize((224,224)), 
+  #  transforms.ToPILImage(),
+  #  transforms.Grayscale(1),
+  #  transforms.Resize((100,100)),
+  #  transforms.ToTensor()])
+
+
 #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    test_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['test'], dim=dim, augment=False, transform=None) #transform=transforms.Compose([transforms.Resize((100,100)),
+    test_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['test'], dim=dim, augment=False) #transform=transforms.Compose([transforms.Resize((100,100)),
                                                                  #    transforms.ToPILImage(), transforms.ToTensor()
                                                                 #      ]))
     train_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['train'], dim=dim, 
-                                              augment=True, transform=transform)
+                                              augment=True)#transform)
     vali_dataset = RandomBalancedIBEISSample(pblm, pcc_sets['vali'], dim=dim,
                                              augment=False)
 
@@ -431,7 +433,7 @@ class SiamHarness(nh.FitHarn):
     """
 
     def __init__(harn, *args, **kw):
-        super(SiamHarness).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         harn.batch_confusions = []
 
     def prepare_batch(harn, raw_batch):
@@ -566,8 +568,8 @@ def setup_harness(**kwargs):
         import cv2
         cv2.setNumThreads(0)
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+   # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+    #                                 std=[0.229, 0.224, 0.225])
 
     loaders = {
         key:  torch.utils.data.DataLoader(
